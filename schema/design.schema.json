@@ -93,6 +93,25 @@
         },
         "generator": {
           "type": "string"
+        },
+        "entityType": {
+          "type": "string",
+          "enum": [
+            "merchant",
+            "service-provider",
+            "other"
+          ],
+          "description": "Drives the PCI DSS cadence rules: service providers confirm scope and test segmentation every six months"
+        },
+        "lastReviewed": {
+          "type": "string",
+          "format": "date",
+          "description": "Last scope confirmation (PCI DSS 12.5.2)"
+        },
+        "lastSegmentationTest": {
+          "type": "string",
+          "format": "date",
+          "description": "Last segmentation penetration test (PCI DSS 11.4.5 / 11.4.6)"
         }
       }
     }
@@ -261,6 +280,28 @@
         },
         "cloud": {
           "$ref": "#/$defs/cloudRef"
+        },
+        "pciScope": {
+          "type": "string",
+          "enum": [
+            "cde",
+            "connected-to",
+            "out-of-scope",
+            "untrusted",
+            "not-applicable"
+          ],
+          "description": "PCI SSC scoping category of the zone (Guidance for PCI DSS Scoping and Network Segmentation): cde, connected-to (and/or security-impacting), out-of-scope, untrusted, or not-applicable"
+        },
+        "template": {
+          "type": "string",
+          "description": "Zone template id the zone was created from, for example dmz-external, cde-data, cloud-hub"
+        },
+        "regimes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Regulatory regimes that apply, for example pci-dss, swift-cscf"
         }
       },
       "required": [
@@ -285,7 +326,8 @@
             "loopback-pool",
             "nat-pool",
             "service-range",
-            "pod-range"
+            "pod-range",
+            "wireless"
           ]
         },
         "zone": {
@@ -461,6 +503,21 @@
               "type": "integer"
             }
           }
+        },
+        "dataClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "chd",
+              "sad",
+              "pii",
+              "secrets",
+              "keys",
+              "public"
+            ]
+          },
+          "description": "Data the node stores or processes: chd (cardholder data), sad (sensitive authentication data), pii, secrets, keys, public"
         }
       },
       "required": [

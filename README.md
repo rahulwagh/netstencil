@@ -33,6 +33,12 @@ backend) is not in this repository.
 - [samples/hybrid-minimal.netstencil.json](samples/hybrid-minimal.netstencil.json): one VPC with two
   Availability Zones, one data centre with red, DMZ, green and management zones behind a Check Point
   pair and Arista cores, joined by a 1 Gbps Direct Connect with BGP, three flows and an inventory.
+- [samples/pci-reference.netstencil.json](samples/pci-reference.netstencil.json): a PCI DSS segmented
+  data centre (internet edge, partner connectivity, external DMZ, CDE application, CDE data with HSMs,
+  shared and security services, management and OOB, corporate users, wireless, dev and test) plus an
+  AWS hub with inspection and a CDE spoke VPC, joined by Direct Connect. Every zone carries `trust`
+  and `pciScope` (cde, connected-to, out-of-scope, untrusted), the two labels the PCI SSC scoping
+  guidance uses, so the design doubles as the scope table and the segmentation-test statement.
 
 Validate a file:
 
