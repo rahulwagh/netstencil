@@ -1,0 +1,794 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jhooq.com/tools/netstencil/schema/design.schema.json",
+  "title": "NetStencil design file (netstencil/1)",
+  "description": "A network design as a model: sites, zones, networks, nodes, links and flows. Open format; the canvas, the validator and the exporters are views over this document. Documentation: https://jhooq.com/tools/netstencil/docs/",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "sites",
+    "zones",
+    "networks",
+    "nodes",
+    "links"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "netstencil/1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sites": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/site"
+      }
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/zone"
+      }
+    },
+    "networks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/network"
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/link"
+      }
+    },
+    "flows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/flow"
+      }
+    },
+    "inventory": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/inventoryPrefix"
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/annotation"
+      }
+    },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "generator": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z]{1,4}_[0-9A-Za-z_-]{2,48}$",
+      "description": "Prefixed ULID or slug, stable for the life of the design"
+    },
+    "cidr4": {
+      "type": "string",
+      "pattern": "^(25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}/(3[0-2]|[12]?\\d)$"
+    },
+    "cidr6": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f:]+/(12[0-8]|1[01]\\d|[1-9]?\\d)$"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "design",
+        "imported",
+        "discovered"
+      ]
+    },
+    "pos": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "w": {
+          "type": "number",
+          "minimum": 0
+        },
+        "h": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pinned": {
+          "type": "boolean"
+        }
+      }
+    },
+    "common": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "pos": {
+          "$ref": "#/$defs/pos"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cloud-account",
+            "cloud-region",
+            "data-centre",
+            "colo",
+            "office",
+            "branch",
+            "edge"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "description": "aws, azure, gcp, oci, on-prem, or a colo provider name"
+        },
+        "region": {
+          "type": "string"
+        },
+        "parent": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "zone": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "vpc",
+            "vnet",
+            "vpc-network",
+            "availability-zone",
+            "trust-zone",
+            "vlan-segment",
+            "vrf",
+            "tenant"
+          ]
+        },
+        "trust": {
+          "type": "string",
+          "enum": [
+            "untrusted",
+            "dmz",
+            "trusted",
+            "restricted",
+            "management"
+          ]
+        },
+        "trustLabel": {
+          "type": "string",
+          "description": "The name the team uses for this level, for example 'red' or 'amber'"
+        },
+        "site": {
+          "$ref": "#/$defs/id"
+        },
+        "parent": {
+          "$ref": "#/$defs/id"
+        },
+        "cidrs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cidr4"
+          }
+        },
+        "cidrs6": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cidr6"
+          }
+        },
+        "cloud": {
+          "$ref": "#/$defs/cloudRef"
+        }
+      },
+      "required": [
+        "kind",
+        "site"
+      ]
+    },
+    "network": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "subnet",
+            "vlan",
+            "point-to-point",
+            "loopback-pool",
+            "nat-pool",
+            "service-range",
+            "pod-range"
+          ]
+        },
+        "zone": {
+          "$ref": "#/$defs/id"
+        },
+        "cidr": {
+          "$ref": "#/$defs/cidr4"
+        },
+        "cidr6": {
+          "$ref": "#/$defs/cidr6"
+        },
+        "vlanId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4094
+        },
+        "reservedRule": {
+          "type": "string",
+          "enum": [
+            "aws",
+            "azure",
+            "gcp",
+            "generic",
+            "none"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "public",
+            "private",
+            "isolated",
+            "transit",
+            "management",
+            "storage",
+            "oob"
+          ]
+        },
+        "gateway": {
+          "type": "string"
+        },
+        "cloud": {
+          "$ref": "#/$defs/cloudRef"
+        }
+      },
+      "required": [
+        "kind",
+        "zone"
+      ]
+    },
+    "interface": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "network": {
+          "$ref": "#/$defs/id"
+        },
+        "address": {
+          "type": "string"
+        },
+        "vlanTagged": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4094
+          }
+        },
+        "speedMbps": {
+          "type": "number",
+          "minimum": 0
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "firewall",
+            "router",
+            "switch-l3",
+            "switch-l2",
+            "load-balancer",
+            "proxy",
+            "ids-ips",
+            "vpn-gateway",
+            "sd-wan-edge",
+            "wan-optimizer",
+            "dns-dhcp",
+            "nac",
+            "wireless-controller",
+            "bastion",
+            "hsm",
+            "server",
+            "cluster",
+            "storage",
+            "cloud-gateway",
+            "database",
+            "endpoint",
+            "user-group",
+            "internet",
+            "carrier"
+          ]
+        },
+        "subtype": {
+          "type": "string",
+          "description": "Category refinement, for example waf, hypervisor, igw, nat, tgw, vgw, dx-gateway, er-gateway, cloud-router, peering, cloud-nat"
+        },
+        "vendor": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "zone": {
+          "$ref": "#/$defs/id"
+        },
+        "interfaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/interface"
+          }
+        },
+        "ha": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "none",
+                "active-passive",
+                "active-active",
+                "cluster"
+              ]
+            },
+            "peer": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "cloud": {
+          "$ref": "#/$defs/cloudRef"
+        },
+        "capacity": {
+          "type": "object",
+          "properties": {
+            "throughputGbps": {
+              "type": "number"
+            },
+            "sessions": {
+              "type": "integer"
+            },
+            "ports": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "required": [
+        "category",
+        "zone"
+      ]
+    },
+    "linkEnd": {
+      "type": "object",
+      "properties": {
+        "node": {
+          "$ref": "#/$defs/id"
+        },
+        "interface": {
+          "$ref": "#/$defs/id"
+        },
+        "zone": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "node"
+          ]
+        },
+        {
+          "required": [
+            "zone"
+          ]
+        }
+      ]
+    },
+    "link": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "properties": {
+        "layer": {
+          "type": "string",
+          "enum": [
+            "l1",
+            "l2",
+            "l3"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "leased-line",
+            "mpls",
+            "dark-fibre",
+            "dia",
+            "ethernet-private-line",
+            "cross-connect",
+            "direct-connect",
+            "expressroute",
+            "cloud-interconnect",
+            "fastconnect",
+            "site-to-site-vpn",
+            "client-vpn",
+            "vpc-peering",
+            "vnet-peering",
+            "transit-gateway-attachment",
+            "privatelink",
+            "private-endpoint",
+            "trunk",
+            "port-channel",
+            "routed",
+            "sd-wan-tunnel"
+          ]
+        },
+        "a": {
+          "$ref": "#/$defs/linkEnd"
+        },
+        "b": {
+          "$ref": "#/$defs/linkEnd"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "circuitId": {
+          "type": "string"
+        },
+        "bandwidthMbps": {
+          "type": "number",
+          "minimum": 0
+        },
+        "latencyMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "mtu": {
+          "type": "integer",
+          "minimum": 68
+        },
+        "redundancy": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "none",
+                "diverse-path",
+                "diverse-provider",
+                "lag"
+              ]
+            },
+            "group": {
+              "type": "string"
+            }
+          }
+        },
+        "encryption": {
+          "type": "string",
+          "enum": [
+            "none",
+            "ipsec",
+            "macsec",
+            "tls",
+            "provider-native"
+          ]
+        },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "static",
+                "bgp"
+              ]
+            },
+            "asnA": {
+              "type": "integer"
+            },
+            "asnB": {
+              "type": "integer"
+            },
+            "prefixesA": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cidr4"
+              }
+            },
+            "prefixesB": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cidr4"
+              }
+            }
+          }
+        },
+        "term": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "string",
+              "format": "date"
+            },
+            "end": {
+              "type": "string",
+              "format": "date"
+            },
+            "monthlyCost": {
+              "type": "number"
+            },
+            "currency": {
+              "type": "string"
+            }
+          }
+        },
+        "critical": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "layer",
+        "kind",
+        "a",
+        "b"
+      ]
+    },
+    "flow": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/id"
+        },
+        "to": {
+          "$ref": "#/$defs/id"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "proto"
+            ],
+            "properties": {
+              "proto": {
+                "type": "string",
+                "enum": [
+                  "tcp",
+                  "udp",
+                  "icmp",
+                  "any"
+                ]
+              },
+              "port": {
+                "type": "string",
+                "description": "A port or a range, for example 443 or 10000-10100"
+              }
+            }
+          }
+        },
+        "via": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "deny",
+            "inspect"
+          ]
+        },
+        "critical": {
+          "type": "boolean"
+        },
+        "ticket": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "decision"
+      ]
+    },
+    "inventoryPrefix": {
+      "type": "object",
+      "required": [
+        "cidr"
+      ],
+      "properties": {
+        "cidr": {
+          "$ref": "#/$defs/cidr4"
+        },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "text",
+            "callout",
+            "box",
+            "arrow"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "pos": {
+          "$ref": "#/$defs/pos"
+        },
+        "target": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "cloudRef": {
+      "type": "object",
+      "description": "The managed resource this entity maps to, filled by imports and read by exports",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "aws",
+            "azure",
+            "gcp",
+            "oci"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "description": "Provider resource type, for example aws:nat-gateway or azure:firewall"
+        },
+        "id": {
+          "type": "string"
+        },
+        "account": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

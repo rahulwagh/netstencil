@@ -1,0 +1,95 @@
+{
+  "schema": "netstencil/1",
+  "id": "d_sample_hybrid",
+  "name": "Sample: one VPC and one data centre over a leased line",
+  "meta": { "created": "2026-10-29T00:00:00Z", "updated": "2026-10-29T00:00:00Z", "authors": ["Rahul Wagh"], "generator": "hand-written sample" },
+  "sites": [
+    { "id": "s_aws_prod", "name": "AWS production account", "kind": "cloud-account", "provider": "aws" },
+    { "id": "s_aws_fra", "name": "eu-central-1", "kind": "cloud-region", "provider": "aws", "region": "eu-central-1", "parent": "s_aws_prod" },
+    { "id": "s_dc1", "name": "DC1 Frankfurt", "kind": "data-centre", "provider": "on-prem", "region": "Frankfurt, DE" }
+  ],
+  "zones": [
+    { "id": "z_vpc", "name": "vpc-prod", "kind": "vpc", "site": "s_aws_fra", "cidrs": ["10.0.0.0/16"], "trust": "trusted" },
+    { "id": "z_az_a", "name": "eu-central-1a", "kind": "availability-zone", "site": "s_aws_fra", "parent": "z_vpc" },
+    { "id": "z_az_b", "name": "eu-central-1b", "kind": "availability-zone", "site": "s_aws_fra", "parent": "z_vpc" },
+    { "id": "z_red", "name": "Red", "kind": "trust-zone", "trust": "untrusted", "trustLabel": "red", "site": "s_dc1" },
+    { "id": "z_dmz", "name": "DMZ", "kind": "trust-zone", "trust": "dmz", "trustLabel": "amber", "site": "s_dc1", "cidrs": ["10.10.0.0/22"] },
+    { "id": "z_green", "name": "Green", "kind": "trust-zone", "trust": "trusted", "trustLabel": "green", "site": "s_dc1", "cidrs": ["10.11.0.0/16"] },
+    { "id": "z_mgmt", "name": "Management", "kind": "trust-zone", "trust": "management", "site": "s_dc1", "cidrs": ["10.255.0.0/24"] }
+  ],
+  "networks": [
+    { "id": "n_pub_a", "name": "public-a", "kind": "subnet", "zone": "z_az_a", "cidr": "10.0.0.0/24", "reservedRule": "aws", "role": "public" },
+    { "id": "n_pub_b", "name": "public-b", "kind": "subnet", "zone": "z_az_b", "cidr": "10.0.1.0/24", "reservedRule": "aws", "role": "public" },
+    { "id": "n_app_a", "name": "app-a", "kind": "subnet", "zone": "z_az_a", "cidr": "10.0.16.0/20", "reservedRule": "aws", "role": "private" },
+    { "id": "n_app_b", "name": "app-b", "kind": "subnet", "zone": "z_az_b", "cidr": "10.0.32.0/20", "reservedRule": "aws", "role": "private" },
+    { "id": "n_dmz_web", "name": "VLAN 110 dmz-web", "kind": "vlan", "zone": "z_dmz", "cidr": "10.10.0.0/24", "vlanId": 110, "reservedRule": "generic", "role": "isolated" },
+    { "id": "n_green_app", "name": "VLAN 210 app", "kind": "vlan", "zone": "z_green", "cidr": "10.11.10.0/24", "vlanId": 210, "reservedRule": "generic", "role": "private" },
+    { "id": "n_green_db", "name": "VLAN 220 db", "kind": "vlan", "zone": "z_green", "cidr": "10.11.20.0/24", "vlanId": 220, "reservedRule": "generic", "role": "private" },
+    { "id": "n_oob", "name": "VLAN 999 oob", "kind": "vlan", "zone": "z_mgmt", "cidr": "10.255.0.0/24", "vlanId": 999, "reservedRule": "generic", "role": "oob" },
+    { "id": "n_p2p_dx", "name": "DX transit /30", "kind": "point-to-point", "zone": "z_green", "cidr": "169.254.100.0/30", "reservedRule": "none", "role": "transit" }
+  ],
+  "nodes": [
+    { "id": "nd_igw", "name": "igw", "category": "cloud-gateway", "subtype": "igw", "zone": "z_vpc", "cloud": { "provider": "aws", "type": "aws:internet-gateway" }, "interfaces": [] },
+    { "id": "nd_nat_a", "name": "nat-a", "category": "cloud-gateway", "subtype": "nat", "zone": "z_az_a", "cloud": { "provider": "aws", "type": "aws:nat-gateway" }, "interfaces": [{ "id": "if_nat_a", "name": "eni", "network": "n_pub_a" }] },
+    { "id": "nd_vgw", "name": "vgw", "category": "cloud-gateway", "subtype": "vgw", "zone": "z_vpc", "cloud": { "provider": "aws", "type": "aws:vpn-gateway" }, "interfaces": [{ "id": "if_vgw", "name": "dx" }] },
+    { "id": "nd_fw1", "name": "fw-dc1-01", "category": "firewall", "vendor": "Check Point", "model": "Quantum", "zone": "z_mgmt",
+      "ha": { "mode": "active-passive", "peer": "nd_fw2" },
+      "interfaces": [
+        { "id": "if_fw1_out", "name": "eth1 outside", "role": "outside" },
+        { "id": "if_fw1_dmz", "name": "eth2 dmz", "network": "n_dmz_web", "address": "10.10.0.1" },
+        { "id": "if_fw1_in", "name": "eth3 inside", "network": "n_green_app", "address": "10.11.10.1" },
+        { "id": "if_fw1_mgmt", "name": "mgmt", "network": "n_oob", "address": "10.255.0.11" }
+      ] },
+    { "id": "nd_fw2", "name": "fw-dc1-02", "category": "firewall", "vendor": "Check Point", "model": "Quantum", "zone": "z_mgmt",
+      "ha": { "mode": "active-passive", "peer": "nd_fw1" },
+      "interfaces": [
+        { "id": "if_fw2_out", "name": "eth1 outside", "role": "outside" },
+        { "id": "if_fw2_dmz", "name": "eth2 dmz", "network": "n_dmz_web", "address": "10.10.0.2" },
+        { "id": "if_fw2_in", "name": "eth3 inside", "network": "n_green_app", "address": "10.11.10.2" },
+        { "id": "if_fw2_mgmt", "name": "mgmt", "network": "n_oob", "address": "10.255.0.12" }
+      ] },
+    { "id": "nd_core1", "name": "core-dc1-01", "category": "switch-l3", "vendor": "Arista", "model": "7280R3", "zone": "z_green",
+      "ha": { "mode": "active-active", "peer": "nd_core2" },
+      "interfaces": [
+        { "id": "if_core1_fw", "name": "Et1 to fw", "network": "n_green_app" },
+        { "id": "if_core1_db", "name": "Vlan220", "network": "n_green_db", "address": "10.11.20.2" },
+        { "id": "if_core1_mgmt", "name": "Ma1", "network": "n_oob", "address": "10.255.0.21" }
+      ] },
+    { "id": "nd_core2", "name": "core-dc1-02", "category": "switch-l3", "vendor": "Arista", "model": "7280R3", "zone": "z_green",
+      "ha": { "mode": "active-active", "peer": "nd_core1" },
+      "interfaces": [
+        { "id": "if_core2_fw", "name": "Et1 to fw", "network": "n_green_app" },
+        { "id": "if_core2_db", "name": "Vlan220", "network": "n_green_db", "address": "10.11.20.3" },
+        { "id": "if_core2_mgmt", "name": "Ma1", "network": "n_oob", "address": "10.255.0.22" }
+      ] },
+    { "id": "nd_ce", "name": "ce-dc1-01", "category": "router", "vendor": "Arista", "model": "7280R3", "zone": "z_green",
+      "interfaces": [
+        { "id": "if_ce_wan", "name": "Et49 to carrier", "network": "n_p2p_dx", "address": "169.254.100.1", "speedMbps": 1000 },
+        { "id": "if_ce_lan", "name": "Et1 to core", "network": "n_green_app" },
+        { "id": "if_ce_mgmt", "name": "Ma1", "network": "n_oob", "address": "10.255.0.31" }
+      ] },
+    { "id": "nd_internet", "name": "Internet", "category": "internet", "zone": "z_red", "interfaces": [] },
+    { "id": "nd_carrier", "name": "Carrier", "category": "carrier", "vendor": "Example Telecom", "zone": "z_red", "interfaces": [] }
+  ],
+  "links": [
+    { "id": "l_dx", "name": "Direct Connect 1 Gbps", "layer": "l3", "kind": "direct-connect", "a": { "node": "nd_ce", "interface": "if_ce_wan" }, "b": { "node": "nd_vgw", "interface": "if_vgw" },
+      "provider": "Example Telecom", "circuitId": "CIRC-000123", "bandwidthMbps": 1000, "mtu": 1500, "encryption": "none",
+      "redundancy": { "mode": "none" }, "routing": { "mode": "bgp", "asnA": 65010, "asnB": 64512, "prefixesA": ["10.10.0.0/22", "10.11.0.0/16"], "prefixesB": ["10.0.0.0/16"] },
+      "term": { "start": "2026-01-01", "end": "2028-12-31", "monthlyCost": 900, "currency": "EUR" }, "critical": true },
+    { "id": "l_fw_out", "name": "firewall outside to internet", "layer": "l3", "kind": "routed", "a": { "node": "nd_fw1", "interface": "if_fw1_out" }, "b": { "node": "nd_internet" } },
+    { "id": "l_fw_core", "name": "firewall inside to core", "layer": "l2", "kind": "port-channel", "a": { "node": "nd_fw1", "interface": "if_fw1_in" }, "b": { "node": "nd_core1", "interface": "if_core1_fw" } },
+    { "id": "l_core_ce", "name": "core to CE", "layer": "l3", "kind": "routed", "a": { "node": "nd_core1", "interface": "if_core1_fw" }, "b": { "node": "nd_ce", "interface": "if_ce_lan" } }
+  ],
+  "flows": [
+    { "id": "f_web", "name": "Internet to DMZ web", "from": "z_red", "to": "n_dmz_web", "ports": [{ "proto": "tcp", "port": "443" }], "via": ["nd_fw1"], "decision": "inspect", "ticket": "CHG-1001" },
+    { "id": "f_web_app", "name": "DMZ web to green app", "from": "n_dmz_web", "to": "n_green_app", "ports": [{ "proto": "tcp", "port": "8443" }], "via": ["nd_fw1"], "decision": "allow", "ticket": "CHG-1001" },
+    { "id": "f_app_cloud", "name": "green app to VPC app tier", "from": "n_green_app", "to": "n_app_a", "ports": [{ "proto": "tcp", "port": "5432" }], "via": ["nd_fw1"], "decision": "allow", "critical": true, "ticket": "CHG-1002" }
+  ],
+  "inventory": [
+    { "cidr": "10.1.0.0/16", "name": "vpc-dev", "owner": "platform team", "source": "imported" },
+    { "cidr": "192.168.0.0/16", "name": "office LAN", "owner": "workplace IT", "source": "design" }
+  ],
+  "annotations": [
+    { "id": "a_note1", "kind": "callout", "text": "Second Direct Connect on a diverse provider planned for Q2", "target": "l_dx" }
+  ]
+}
