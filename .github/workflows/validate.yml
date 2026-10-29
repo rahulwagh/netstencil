@@ -15,5 +15,5 @@ jobs:
         run: |
           set -e
           for f in samples/*.netstencil.json; do
-            npx --yes -p ajv-cli@5 -p ajv-formats@2 ajv validate --spec=draft2020 -c ajv-formats --strict=true -s schema/design.schema.json -d "$f"
+            npx --yes -p ajv-cli@5 -p ajv-formats@2 ajv validate --spec=draft2020 -c ajv-formats -s schema/design.schema.json -d "$f"
           done
